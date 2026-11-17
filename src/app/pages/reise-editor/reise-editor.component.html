@@ -1,0 +1,310 @@
+<div class="editor-container">
+  <header class="editor-header">
+    <a mat-button routerLink="/reisen">
+      <mat-icon>arrow_back</mat-icon>
+      Zurück zur Übersicht
+    </a>
+    <h1>{{ istNeueReise() ? 'Neue Reise planen' : 'Reise bearbeiten: ' + reiseModel().ziel }}</h1>
+  </header>
+
+  <form class="editor-form">
+    <!-- KARTE 1: Stammdaten & Zeitraum -->
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-card-title>1. Reiseziel & Zeitraum</mat-card-title>
+        @if (urlaubsTage() > 0) {
+          <mat-card-subtitle>Reisedauer: <strong>{{ urlaubsTage() }} Tage</strong></mat-card-subtitle>
+        }
+      </mat-card-header>
+
+      <mat-card-content class="form-grid">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Reiseziel</mat-label>
+          <input matInput [formField]="reiseForm.ziel" placeholder="z. B. Rom & Amalfiküste" />
+         @if (reiseForm.ziel().invalid() && reiseForm.ziel().touched()) {
+            @for (err of reiseForm.ziel().errors(); track err.kind) {
+                <mat-error>{{ err.message }}</mat-error>
+            }
+        }
+
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Reiseart</mat-label>
+          <mat-select [formField]="reiseForm.reiseArt">
+            <mat-option value="strand">Strandurlaub</mat-option>
+            <mat-option value="staedtetrip">Städtetrip</mat-option>
+            <mat-option value="camping">Camping</mat-option>
+            <mat-option value="rundreise">Rundreise</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Verpflegung</mat-label>
+          <mat-select [formField]="reiseForm.verpflegungsArt">
+            <mat-option value="all_inclusive">Essen im Hotel (All Inclusive)</mat-option>
+            <mat-option value="restaurant">Essen außerhalb (Restaurant)</mat-option>
+            <mat-option value="selbstverpflegung">Selbstverpflegung (Kochen)</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Startdatum</mat-label>
+          <input matInput type="date" [formField]="reiseForm.startDatum" />
+          @if (reiseForm.startDatum().invalid() && reiseForm.startDatum().touched()) {
+            @for (err of reiseForm.startDatum().errors(); track err.kind) {
+              <mat-error>{{ err.message }}</mat-error>
+            }
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Enddatum</mat-label>
+          <input matInput type="date" [formField]="reiseForm.endDatum" />
+          @if (reiseForm.endDatum().invalid() && reiseForm.endDatum().touched()) {
+            @for (err of reiseForm.endDatum().errors(); track err.kind) {
+              <mat-error>{{ err.message }}</mat-error>
+            }
+          }
+        </mat-form-field>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- KARTE 2: Budget & Reise-Extras -->
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-card-title>2. Budget & Reise-Extras</mat-card-title>
+      </mat-card-header>
+
+      <mat-card-content class="form-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>Geplantes Gesamtbudget (€)</mat-label>
+          <input matInput type="number" [formField]="reiseForm.budgetLimit" />
+          @if (reiseForm.budgetLimit().invalid() && reiseForm.budgetLimit().touched()) {
+            @for (err of reiseForm.budgetLimit().errors(); track err.kind) {
+              <mat-error>{{ err.message }}</mat-error>
+            }
+          }
+        </mat-form-field>
+
+        <div class="budget-status-box" [class.warnung]="budgetStatus().istUeberzogen">
+          <span>Gesamtausgaben: <strong>{{ budgetStatus().ausgabenSumme | currency:'EUR' }}</strong></span>
+          <span>
+            {{ budgetStatus().istUeberzogen ? 'Über Budget:' : 'Noch verfügbar:' }}
+            <strong>{{ budgetStatus().restBudget | currency:'EUR' }}</strong>
+          </span>
+        </div>
+
+        <mat-divider class="full-width"></mat-divider>
+
+        <div class="conditional-group">
+          <mat-checkbox [formField]="reiseForm.benoetigtReisepass">
+            Reisepass für dieses Ziel erforderlich
+          </mat-checkbox>
+
+          @if (!reiseForm.reisepassNummer().hidden()) {
+            <mat-form-field appearance="outline">
+              <mat-label>Reisepassnummer</mat-label>
+              <input matInput [formField]="reiseForm.reisepassNummer" placeholder="z. B. C01X00T47" />
+              @if (reiseForm.reisepassNummer().invalid() && reiseForm.reisepassNummer().touched()) {
+                @for (err of reiseForm.reisepassNummer().errors(); track err.kind) {
+                  <mat-error>{{ err.message }}</mat-error>
+                }   
+              }
+            </mat-form-field>
+          }
+        </div>
+
+        <div class="conditional-group">
+          <mat-checkbox [formField]="reiseForm.mietwagen">
+            Mietwagen vor Ort einplanen
+          </mat-checkbox>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Benötigte Führerscheinklasse</mat-label>
+            <mat-select [formField]="reiseForm.fuehrerscheinKlasse">
+              <mat-option value="B">Klasse B (PKW)</mat-option>
+              <mat-option value="BE">Klasse BE (PKW + Anhänger)</mat-option>
+              <mat-option value="A">Klasse A (Motorrad)</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- KARTE 3: Mitreisende -->
+    <mat-card appearance="outlined">
+      <mat-card-header class="card-header-with-action">
+        <div>
+          <mat-card-title>3. Mitreisende</mat-card-title>
+          <mat-card-subtitle>Eingetragene E-Mails erhalten später Zugriff auf die Reise</mat-card-subtitle>
+        </div>
+        <button mat-stroked-button type="button" (click)="mitreisendenHinzufuegen()">
+          <mat-icon>person_add</mat-icon> Person hinzufügen
+        </button>
+      </mat-card-header>
+
+      <mat-card-content class="list-stack">
+        @for (personFeld of reiseForm.mitreisende; track $index) {
+          <div class="list-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Name</mat-label>
+              <input matInput [formField]="personFeld.name" placeholder="z. B. Anna" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>E-Mail-Adresse</mat-label>
+              <input matInput type="email" [formField]="personFeld.email" placeholder="anna@mail.de" />
+            </mat-form-field>
+
+            @if (reiseForm.mitreisende.length > 1) {
+              <button mat-icon-button color="warn" type="button" (click)="mitreisendenEntfernen($index)">
+                <mat-icon>delete</mat-icon>
+              </button>
+            }
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+    <!-- KARTE 4: Ausgaben & Splitwise-Rechner -->
+    <mat-card appearance="outlined">
+      <mat-card-header class="card-header-with-action">
+        <div>
+          <mat-card-title>4. Reise-Ausgaben & Kosten-Splitter</mat-card-title>
+          <mat-card-subtitle>Trage alle Kosten ein und wähle aus, wer bezahlt hat</mat-card-subtitle>
+        </div>
+        <button mat-stroked-button type="button" (click)="ausgabeHinzufuegen()">
+          <mat-icon>add_shopping_cart</mat-icon> Ausgabe hinzufügen
+        </button>
+      </mat-card-header>
+
+      <mat-card-content class="list-stack">
+        @for (ausgabeFeld of reiseForm.ausgaben; track $index) {
+          <div class="ausgabe-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Beschreibung</mat-label>
+              <input matInput [formField]="ausgabeFeld.titel" placeholder="z. B. Hotel / Flug" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Kategorie</mat-label>
+              <mat-select [formField]="ausgabeFeld.kategorie">
+                <mat-option value="anreise">Anreise / Flug</mat-option>
+                <mat-option value="unterkunft">Unterkunft</mat-option>
+                <mat-option value="mietwagen">Mietwagen</mat-option>
+                <mat-option value="all_inclusive">Essen (All Inclusive)</mat-option>
+                <mat-option value="restaurant">Essen (Restaurant)</mat-option>
+                <mat-option value="selbstverpflegung">Selbstverpflegung</mat-option>
+                <mat-option value="aktivitaet">Aktivität / Ausflug</mat-option>
+                <mat-option value="sonstiges">Sonstiges</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Betrag (€)</mat-label>
+              <input matInput type="number" [formField]="ausgabeFeld.kosten" />
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Bezahlt von</mat-label>
+              <mat-select [formField]="ausgabeFeld.bezahltVonEmail">
+                @for (p of reiseModel().mitreisende; track $index) {
+                  <mat-option [value]="p.email">{{ p.name || p.email }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <mat-checkbox [formField]="ausgabeFeld.gebucht">Gebucht</mat-checkbox>
+
+            <button mat-icon-button color="warn" type="button" (click)="ausgabeEntfernen($index)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        }
+
+        @if (reiseModel().ausgaben.length > 0 && reiseModel().mitreisende.length > 0) {
+          <div class="splitwise-box">
+            <h3>Live-Kostenaufteilung (Anteil pro Person: {{ kostenSplit().anteilProPerson | currency:'EUR' }})</h3>
+            <div class="split-grid">
+              @for (eintrag of kostenSplit().abrechnung; track eintrag.email) {
+                <div class="split-card" [class.guthaben]="eintrag.saldo > 0.01" [class.schulden]="eintrag.saldo < -0.01">
+                  <strong>{{ eintrag.name }}</strong>
+                  <span>Vorgestreckt: {{ eintrag.bezahlt | currency:'EUR' }}</span>
+                  @if (eintrag.saldo > 0.01) {
+                    <span class="saldo-text">Bekommt <strong>{{ eintrag.saldo | currency:'EUR' }}</strong> zurück</span>
+                  } @else if (eintrag.saldo < -0.01) {
+                    <span class="saldo-text">Muss noch <strong>{{ (eintrag.saldo * -1) | currency:'EUR' }}</strong> zahlen</span>
+                  } @else {
+                    <span class="saldo-text">Ist genau quitt (0,00 €)</span>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <!-- KARTE 5: Intelligente Packliste -->
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-card-title>5. Intelligente Packliste</mat-card-title>
+        <mat-card-subtitle>Automatische Vorschläge basierend auf Reisedauer, Reiseart & Verpflegung</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content class="list-stack">
+        @if (packlistenVorschlaege().length > 0) {
+          <div class="vorschlaege-box">
+            <span class="label">Passende Vorschläge (klicken zum Übernehmen):</span>
+            <mat-chip-set>
+              @for (vorschlag of packlistenVorschlaege(); track vorschlag) {
+                <mat-chip (click)="packlistenPunktHinzufuegen(vorschlag, true)">
+                  + {{ vorschlag }}
+                </mat-chip>
+              }
+            </mat-chip-set>
+          </div>
+        }
+
+        <div class="add-pack-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Eigenen Gegenstand hinzufügen</mat-label>
+            <input
+              matInput
+              [value]="neuerPacklistenPunkt()"
+              (input)="neuerPacklistenPunkt.set($any($event.target).value)"
+              (keydown.enter)="$event.preventDefault(); packlistenPunktHinzufuegen(neuerPacklistenPunkt())"
+              placeholder="z. B. Ladekabel, Buch..." />
+          </mat-form-field>
+          <button mat-stroked-button type="button" (click)="packlistenPunktHinzufuegen(neuerPacklistenPunkt())">
+            Hinzufügen
+          </button>
+        </div>
+
+        <div class="packliste-items">
+          @for (itemFeld of reiseForm.packliste; track $index) {
+            <div class="pack-item">
+              <mat-checkbox [formField]="itemFeld.eingepackt">
+                <span [class.abgehakt]="itemFeld.eingepackt().value()">
+                  {{ itemFeld.gegenstand().value() }}
+                </span>
+              </mat-checkbox>
+              <button mat-icon-button type="button" (click)="packlistenPunktEntfernen($index)">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          }
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Speichern-Leiste unten -->
+    <div class="form-actions">
+      <a mat-stroked-button routerLink="/reisen">Abbrechen</a>
+      <button mat-flat-button type="button" (click)="speichern()">
+        <mat-icon>save</mat-icon>
+        Reise speichern
+      </button>
+    </div>
+  </form>
+</div>

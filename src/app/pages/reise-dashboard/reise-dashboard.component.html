@@ -1,0 +1,94 @@
+<div class="dashboard">
+  <!-- Kopfbereich mit Material-Buttons und Icons -->
+  <header class="dashboard-header">
+    <div>
+      <h1>
+        <mat-icon class="logo-icon">flight_takeoff</mat-icon>
+        eazy-travel
+      </h1>
+      <p>Deine gemeinsame Reise- & Budgetplanung</p>
+    </div>
+
+    <div class="header-actions">
+      <!-- Versteckter File-Input ausgelöst durch einen schicken Material-Button -->
+      <button mat-stroked-button type="button" (click)="fileInput.click()">
+        <mat-icon>upload_file</mat-icon>
+        Plan importieren (.json)
+      </button>
+      <input #fileInput type="file" accept=".json" (change)="onImport($event)" hidden />
+
+      <!-- Haupt-Button in deiner gewählten Theme-Farbe (Orange) -->
+      <a mat-flat-button routerLink="/reisen/neu">
+        <mat-icon>add</mat-icon>
+        Neue Reise planen
+      </a>
+    </div>
+  </header>
+
+  <!-- Wenn noch keine Reisen vorhanden sind -->
+  @if (reisenMitStats().length === 0) {
+    <mat-card appearance="outlined" class="empty-state">
+      <mat-card-content>
+        <mat-icon class="empty-icon">luggage</mat-icon>
+        <h2>Noch keine Reisen geplant</h2>
+        <p>Starte jetzt dein nächstes Abenteuer oder importiere einen geteilten Reiseplan.</p>
+        <a mat-flat-button routerLink="/reisen/neu">Erste Reise anlegen</a>
+      </mat-card-content>
+    </mat-card>
+  } @else {
+    <div class="reisen-grid">
+      @for (reise of reisenMitStats(); track reise.id) {
+        <!-- Jede Reise wird als schicke Material-Card dargestellt -->
+        <mat-card appearance="outlined" class="reise-card">
+          <mat-card-header>
+            <mat-card-title>{{ reise.ziel }}</mat-card-title>
+            <mat-card-subtitle>
+              {{ reise.startDatum | date:'dd.MM.yyyy' }} – {{ reise.endDatum | date:'dd.MM.yyyy' }}
+            </mat-card-subtitle>
+          </mat-card-header>
+
+          <mat-card-content class="card-content">
+            <!-- Chips für Reiseart & Mitreisende -->
+            <div class="chips-row">
+              <mat-chip-set>
+                <mat-chip>{{ reise.reiseArt }}</mat-chip>
+                <mat-chip>{{ reise.mitreisende.length }} Personen</mat-chip>
+              </mat-chip-set>
+              <span class="sterne">{{ '⭐'.repeat(reise.vorfreudeSterne) }}</span>
+            </div>
+
+            <!-- Budget-Fortschrittsbalken von Angular Material -->
+            <div class="budget-box">
+              <div class="budget-text">
+                <span>Ausgaben: <strong>{{ reise.gesamtKosten | currency:'EUR' }}</strong></span>
+                <span>Limit: {{ reise.budgetLimit | currency:'EUR' }}</span>
+              </div>
+
+              <!-- Wenn über Budget, färbt Angular Material den Balken automatisch rot ("warn") -->
+              <mat-progress-bar
+                mode="determinate"
+                [color]="reise.istUeberBudget ? 'warn' : 'primary'"
+                [value]="reise.budgetProzent">
+              </mat-progress-bar>
+            </div>
+          </mat-card-content>
+
+          <!-- Fußzeile der Karte mit Aktions-Buttons -->
+          <mat-card-actions align="end" class="card-actions">
+            <a mat-flat-button [routerLink]="['/reisen', reise.id]" class="open-btn">
+              Öffnen & Planen
+            </a>
+
+            <button mat-icon-button matTooltip="Als JSON exportieren" (click)="onExport(reise)">
+              <mat-icon>download</mat-icon>
+            </button>
+
+            <button mat-icon-button color="warn" matTooltip="Reise löschen" (click)="onDelete(reise)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </mat-card-actions>
+        </mat-card>
+      }
+    </div>
+  }
+</div>
