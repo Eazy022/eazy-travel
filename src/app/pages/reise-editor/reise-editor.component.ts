@@ -27,6 +27,7 @@ import { MatChipsModule } from '@angular/material/chips';
 
 import { ReiseService } from '../../services/reise.service';
 import { ReisePlanung } from '../../models/reise.model';
+import { berechneUrlaubsTage } from '../../utils/date.utils';
 
 @Component({
   selector: 'app-reise-editor',
@@ -127,13 +128,9 @@ export class ReiseEditorComponent implements OnInit {
   });
 
   // 3. LIVE-BERECHNUNG: URLAUBSTAGE
-  protected readonly urlaubsTage = computed(() => {
-    const start = this.reiseModel().startDatum;
-    const ende = this.reiseModel().endDatum;
-    if (!start || !ende || ende < start) return 0;
-    const diffMs = new Date(ende).getTime() - new Date(start).getTime();
-    return Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1;
-  });
+  protected readonly urlaubsTage = computed(() => 
+    berechneUrlaubsTage(this.reiseModel().startDatum, this.reiseModel().endDatum)
+  );
 
   // 4. LIVE-BERECHNUNG: BUDGET-AMPEL
   protected readonly budgetStatus = computed(() => {
