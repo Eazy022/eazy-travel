@@ -1,0 +1,190 @@
+<div class="detail-container"></div>
+    <!---- Prüfen ob eine gültige reise gefunden wurde und sie als lokale Variable "reise" bereitstellen -->
+    @if (reise(); as reise){
+        <!-- Kopfbereich: Zurück-Link, Titel, Zeitraum und Aktions-Buttons -->
+         <header class="detail-header">
+            <a mat-button routerLink="/reisen">
+                <mat-icon>arrow_back</mat-icon>
+                Zurück zur Übersicht
+            </a>
+
+            <div class="titel-row">
+                <div>
+                    <h1>{{ reise.ziel }}</h1>
+                    <p class="subtitle">
+                        {{ reise.startDatum | date:'dd.MM.yyyy'}} - {{ reise.endDatum | date:'dd.MM.yyyy' }}
+                        @if (stats()?.tage) {
+                            <span>({{ stats()?.tage }} Tage)</span>
+                    }
+                    </p>
+                </div>
+
+                <div class="header-buttons">
+                    <!--- JSON-Datei herunterladen -->
+                    <button mat-stroked-button type="button" (click)="onExport()">
+                        <mat-icon>download</mat-icon> JSON Export 
+                    </button>
+
+                    <!--- Wechsel in den reise-Editor -->
+                    <a mat-flat-button [routerLink]="['/reisen', reise.id, 'bearbeiten']">
+                        <mat-icon>edit</mat-icon> Reise bearbeiten
+                    </a>
+                </div>
+            </div>
+         </header>
+
+         <div class="detail-grid">
+            <!-- Karte: Reise-Eckdaten (Übersicht) -->
+             <mat-card appearance="outlined">
+                <mat-card-header>
+                    <mat-card-title> Reise-Eckdaten</mat-card-title>
+                </mat-card-header>
+
+                <mat-card-content class="info-list">
+                    <div clas="info-item">
+                        <span class="label">Reiseart:</span>
+                        <strong class="capitalize">{{ reise.reiseArt }}</strong>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Verpflegung:</span>
+                        <!-- Unterstriche wie in 'all_inclusive' durch Leerzeichen ersetzen -->
+                        <strong class="capitalize">{{ reise.verpflegungsArt.replace('_', ' ') }}</strong>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Vorfreude:</span>
+                        <span>{{ '⭐'.repeat(reise.vorfreudeSterne) }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Reisepass:</span>
+                        <strong>{{ reise.benoetigtReisepass ? 'Ja (' + reise.reisepassNummer + ')' : 'Nicht erforderlich' }}</strong>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Mietwagen:</span>
+                        <strong>{{ reise.mietwagen ? 'Ja (Klasse ' + reise.fuehrerscheinKlasse + ')' : 'Nein' }}</strong>
+                    </div>
+                </mat-card-content>
+             </mat-card>
+
+             <!-- Karte: Budget-Status mit Fortschrittsbalken -->
+              @if (stats(); as stats) {
+                <mat-card appearance="outlined">
+                    <mat-card-header>
+                        <mat-card-title>Budget-Übersicht</mat-card-title>
+                    </mat-card-header>
+                
+                    <mat-card-content class="budget-content">
+                        <div class="budget-numbers">
+                            <div>
+                                <span class="label">Gesamtausgaben</span>
+                                <h2>{{ stats.gesamtKosten | currency:'EUR' }}</h2>
+                            </div>
+                            <div class="right">
+                                <span class="label">Budget-Limit</span>
+                                <h2>{{ reise.budgetLimit | currency:'EUR' }}</h2>
+                            </div>
+                        </div>
+
+                        <!-- Balken färbt sich automatisch rot (Warnung), wenn  istUeberBudget 'true' ist -->
+                        <mat-progress-bar
+                            mode="determinate"
+                            [color]="stats.istUeberBudget ? 'warn' : 'primary'"
+                            [value]="stats.budgetProzent">
+                        </mat-progress-bar>
+
+                        <p class="budget-hint" [class.warn]="stats.istUeberBudget">
+                            @if (stats.istUeberBudget) {
+                                Budget um {{ (stats.gesamtKosten - reise.budgetLimit) | currency:'EUR' }} überschritten!
+                            }   @else {
+                                noch {{ (reise.budgetLimit - stats.gesamtKosten) | currency:'EUR' }} im Budget verfügbar 
+                            }
+                        </p>
+                    </mat-card-content>
+                </mat-card>
+              }
+
+
+              <!-- Karte: Einzelne Ausgaben & Splitweise-Kostenaufteilung (volle Breite) -->
+               <mat-card appearance="outlined" class="full-width">
+                <mat-card-header>
+                    <mat-card-title>Ausgaben & Kostenaufteilung</mat-card-title>
+                    <mat-card-subtitle>Anteil pro Person: {{ kostenSplit().anteilProPerson | currency:'EUR' }}</mat-card-subtitle>
+                </mat-card-header>
+
+                <mat-card-content class="ausgaben-section">
+                    @if (reise.ausgaben.length === 0) {
+                        <p class="muted">Noch keine Ausgaben eingetragen</p>
+                    }   @else {
+                        <!-- Liste aller einzelnen Ausgabenposten -->
+                        <div class="ausgaben-liste">
+                            @for (posten of reise.ausgaben; track $index) {
+                                <div class="ausgaben-zeile">
+                                    <div>
+                                        <strong>{{ posten.titel }}</strong>
+                                        <span class="kategorie-tag">{{ posten.kategorie }}</span>
+                                    </div>
+                                    <div class="ausgabe-meta">
+                                        <span>Bezahlt von: <strong>{{ getZahlerName(posten.bezahltVonEmail) }}</strong></span>
+                                        <span class="betrag">{{ posten.kosten | currency:'EUR' }}</span>
+                                        <span class="status-pill" [class.gebucht]=""posten.gebucht>
+                                            {{ posten.gebucht ? 'Gebucht' : 'Offen' }}
+                                        </span>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <mat-divider></mat-divider>
+
+                        <!-- Splitweise-Abrechnung wer bekommt Geld zurück, wer muss noch zahlen -->
+                        <div class="split-grid">
+                            @for (eintrag of kostenSplit().abrechnung; track eintrag.email) {
+                                <div class="split-card" [class.guthaben]="eintrag.saldo > 0.01" [class.schulden]="eintrag.saldo < -0.01">
+                                    <strong>{{ eintrag.name }}</strong>
+                                    <span>Vorgestreckt: {{ eintrag.bezahlt | currency:'EUR' }}</span>
+
+                                    @if (eintrag.saldo > 0.01) {
+                                        <span>Bekommt <strong>{{ eintrag.saldo | currency:'EUR' }}</strong> zurück</span>
+                                    }   @else if (eintrag.saldo < -0.01) {
+                                        <!-- Mit * -1 drehen wir das Minuszeichen für den Text in eine positive Zahl um -->
+                                        <span>Muss noch <strong>{{ (eintrag.saldo * -1) | currency:'EUR' }}</strong> zahlen</span>
+                                    }   @else {
+                                        <span>Ist genau quitt (0,00 €)</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </mat-card-content>
+               </mat-card>
+
+               <!-- Karte: Interaktive Packliste zum direkten Abhaken unterwegs -->
+               <mat-card appearance="outlined" class="full-width">
+                <mat-card-header>
+                    <mat-card-title>Packliste(Direktabhaken)</mat-card-title>
+                </mat-card-header>
+
+                <mat-card-content>
+                    @if (reise.packliste.length === 0) {
+                        <p class="muted">Noch keine Einträge auf der Packliste</p>
+                    }   @else {
+                        <div class="pack-grid">
+                            @for (item of reise.packliste; track $index) {
+                                <!-- (change) ruft togglePackListenPunkt() auf und speichert den Haken sofort -->
+                                <mat-checkbox [checked]="item.eingepackt" (change)="togglePacklistenPunkt($index)">
+                                    <span [class.abgehakt]="item.eingepackt">{{ item.gegenstand }}</span>
+                                </mat-checkbox> 
+                            }
+                        </div>
+                    }
+                </mat-card-content>
+            </mat-card>
+         </div>
+        } @else {
+            <!-- Fallback_anzeige, falls die ID in der URL nicht existiert -->
+             <mat-card appearance="outlined">
+                <mat-card-content>
+                    <h2>Reise nicht gefunden</h2>
+                    <a mat-flat-button routerLink="/reisen">Zurück zur Übersicht</a>
+                </mat-card-content>
+             </mat-card>
+        }
